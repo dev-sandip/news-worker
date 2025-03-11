@@ -20,7 +20,12 @@ export interface NewsData {
   placesToRead?: PlaceToRead[];
   imageSource?: string;
 }
-
+export interface DateData {
+  nepaliDate?: string;
+  time?: string;
+  lunar?: string;
+  lunarPhase?: string;
+}
 async function getHTML(url: string) {
   try {
     const response = await fetch(url);
@@ -30,7 +35,34 @@ async function getHTML(url: string) {
     return null;
   }
 }
+async function extractDate(url: string, c: Context) {
+  if (!url) {
+    console.error("NEWS_URL is not set.");
+    return null;
+  }
 
+  const html = await getHTML(url);
+  if (!html) {
+    console.error("HTML is null or empty.");
+    return null;
+  }
+
+  const $ = cheerio.load(html);
+  const nepaliDate = $(".date .nep").text().trim();
+  const time = $(".time span:first-child").text().trim();
+  const lunarPhase = $(".logo div:nth-child(3)").text().trim();
+  const lunarPhaseParts = lunarPhase
+    .split("\n")
+    .map((part) => part.trim().replace(/:/g, ""));
+  const dateData: DateData = {
+    nepaliDate,
+    time,
+    lunar: lunarPhaseParts[0],
+    lunarPhase: lunarPhaseParts[1],
+  };
+
+  return dateData;
+}
 async function extractNewsData(
   url: string,
   c: Context
@@ -93,7 +125,7 @@ async function extractNewsData(
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.get("/news", async (c, env) => {
-  const url = c.env.NEWS_URL;
+  const url = `${c.env.NEWS_URL}/newsStory`;
   if (!url) {
     return c.json({ error: "NEWS_URL is not set." }, 400);
   }
@@ -106,7 +138,10 @@ app.get("/news", async (c, env) => {
   return c.json(news);
 });
 
-app.get("/", (c) => {
+app.get("/", async (c) => {
+  const url = c.env.NEWS_URL;
+  const date = await extractDate(url, c);
+
   return c.json(
     {
       name: "News API Worker",
@@ -127,6 +162,7 @@ app.get("/", (c) => {
       },
       version: "1.0.0",
       license: "MIT",
+      date,
     },
     200
   );
