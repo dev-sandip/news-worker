@@ -16,6 +16,7 @@ export interface NewsData {
   image?: string;
   title?: string;
   description?: string;
+  publishedTime?: string;
   placesToRead?: PlaceToRead[];
   imageSource?: string;
 }
@@ -53,15 +54,15 @@ async function extractNewsData(
   ).each((_, element) => {
     const image = $(element)
       .find(".news-image-wrapper")
-      .css("background-image")
-      ?.replace(/^url\(['"](.+)['"]\)/, "$1");
+      .css("background")
+      ?.replace(/^url\(['"]?(https?:\/\/[^"')]+)["']?\)/, "$1");
     const imageSource = $(element)
       .find(".news-story-image-source")
       .text()
       .trim();
     const title = $(element).find(".news-story-title").text().trim();
     const description = $(element).find(".text-lg").text().trim();
-
+    const publishedTime = $(element).find(".news-published-date").text().trim();
     const placesToRead: PlaceToRead[] = [];
     $(element)
       .find(".source-items > abbr")
@@ -75,7 +76,14 @@ async function extractNewsData(
         placesToRead.push({ siteTitle, logo, url });
       });
 
-    newsData.push({ image, title, description, placesToRead, imageSource });
+    newsData.push({
+      image,
+      imageSource,
+      publishedTime,
+      title,
+      description,
+      placesToRead,
+    });
   });
 
   return newsData;
